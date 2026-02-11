@@ -1,44 +1,40 @@
 #!/bin/bash
-# DNS Tunnel Auto Script
+# DNS Tunnel Auto Script - Fixed Version
 # Usage:
-#   ./dns-tunnel-auto.sh
+#   ./dns-tunnel-auto-fixed.sh
 
 # =========================
 # === Configuration =======
 # =========================
 
-# نقش خودت را انتخاب کن: server / client
 ROLE=""
-# اگر سرور هست، IP تونل داخلی
 TUN_IP=""
-# دامنه تونل
 DOMAIN=""
-# پسورد تونل
 PASSWORD="niloo"
 
 # =========================
 # === User Input =========
 # =========================
 
-echo "DNS Tunnel Setup"
-echo "انتخاب نقش:"
+echo "=== DNS Tunnel Setup ==="
+echo "Choose role:"
 echo "1) Server"
 echo "2) Client"
-read -p "انتخاب کن (1 یا 2): " CHOICE
+read -p "Enter choice (1 or 2): " CHOICE
 
 if [[ "$CHOICE" == "1" ]]; then
     ROLE="server"
-    read -p "IP داخلی تونل برای سرور (مثلا 10.50.50.1): " TUN_IP
-    read -p "دامنه تونل (مثلا t1.example.com): " DOMAIN
+    read -p "Enter tunnel internal IP (example: 10.50.50.1): " TUN_IP
+    read -p "Enter tunnel domain (example: t1.example.com): " DOMAIN
 elif [[ "$CHOICE" == "2" ]]; then
     ROLE="client"
-    read -p "دامنه تونل (مثلا t1.example.com): " DOMAIN
+    read -p "Enter tunnel domain (example: t1.example.com): " DOMAIN
 else
-    echo "انتخاب نامعتبر"
+    echo "Invalid choice, exiting."
     exit 1
 fi
 
-read -p "پسورد تونل (پیش فرض: niloo): " USER_PASS
+read -p "Enter tunnel password (default: niloo): " USER_PASS
 if [[ ! -z "$USER_PASS" ]]; then
     PASSWORD="$USER_PASS"
 fi
@@ -50,7 +46,7 @@ fi
 setup_server() {
     echo "[*] Setting up DNS Tunnel Server..."
     # TUN Interface
-    sudo ip tuntap add dev dns0 mode tun 2>/dev/null || echo "[*] dns0 exists"
+    sudo ip tuntap add dev dns0 mode tun 2>/dev/null || echo "[*] dns0 already exists"
     sudo ip addr add $TUN_IP/24 dev dns0 2>/dev/null || true
     sudo ip link set dns0 up
 
