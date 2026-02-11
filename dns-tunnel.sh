@@ -10,7 +10,7 @@
 ROLE=""
 TUN_IP=""
 DOMAIN=""
-PASSWORD="niloo"
+PASSWORD="mrh"
 
 # =========================
 # === User Input =========
