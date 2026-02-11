@@ -1,14 +1,10 @@
 #!/bin/bash
-# mrh DNS Tunnel - Public version
+# mrh DNS Tunnel Stable - For Iran Friendly Internet
 # DNS Tunnel + Custom Port Forward + Status Log
 
-# =============================
-# ===== User Input ===========
-# =============================
+echo "=== mrh DNS Tunnel Stable Setup ==="
 
-echo "=== mrh DNS Tunnel Setup ==="
-
-# Role: server or client
+# ===== User Input =====
 echo "Choose role:"
 echo "1) Server"
 echo "2) Client"
@@ -26,10 +22,9 @@ else
     exit 1
 fi
 
-read -p "Enter tunnel password (default: niloo): " USER_PASS
-PASSWORD="${USER_PASS:-niloo}"
+read -p "Enter tunnel password (default: dnstunnel123): " USER_PASS
+PASSWORD="${USER_PASS:-dnstunnel123}"
 
-# Ports to forward (only for client)
 FORWARD_PORTS=()
 if [[ "$ROLE" == "client" ]]; then
     read -p "Enter first port to forward (example: 2020): " PORT1
@@ -37,24 +32,22 @@ if [[ "$ROLE" == "client" ]]; then
     FORWARD_PORTS=($PORT1 $PORT2)
 fi
 
-# =============================
-# ===== Functions ============
-# =============================
+# ===== Functions =====
 
 log_status() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
 setup_server() {
-    log_status "Starting DNS Tunnel Server..."
+    log_status "Starting DNS Tunnel Server on UDP 53..."
     sudo ip tuntap add dev dns0 mode tun 2>/dev/null || log_status "dns0 already exists"
     sudo ip addr add $TUN_IP/24 dev dns0 2>/dev/null || true
     sudo ip link set dns0 up
 
+    # iodined always uses port 53 by default
     sudo iodined -f -c -P $PASSWORD -m 1200 $TUN_IP $DOMAIN &
     sleep 2
 
-    # Check status
     if ip addr show dns0 &>/dev/null; then
         log_status "Server tun interface dns0 is up."
     else
@@ -63,19 +56,18 @@ setup_server() {
 }
 
 setup_client() {
-    log_status "Connecting DNS Tunnel Client..."
+    log_status "Connecting DNS Tunnel Client on UDP 53..."
     sudo iodine -f -P $PASSWORD $DOMAIN &
     sleep 5
 
-    # Setup TUN interface
     CLIENT_TUN_IP="10.50.50.2"
     sudo ip addr add $CLIENT_TUN_IP/24 dev dns0 2>/dev/null || true
     sudo ip link set dns0 up
     sudo sysctl -w net.ipv4.ip_forward=1
 
-    # Forward ports
+    # Forward ports inside the tunnel
     for PORT in "${FORWARD_PORTS[@]}"; do
-        log_status "Forwarding port $PORT..."
+        log_status "Forwarding port $PORT through dns0..."
         sudo iptables -A INPUT -i dns0 -p tcp --dport $PORT -j ACCEPT
         sudo iptables -A INPUT -i dns0 -p udp --dport $PORT -j ACCEPT
         sudo iptables -t nat -A PREROUTING -i dns0 -p tcp --dport $PORT -j DNAT --to-destination $CLIENT_TUN_IP:$PORT
@@ -84,20 +76,15 @@ setup_client() {
         sudo iptables -t nat -A POSTROUTING -o dns0 -p udp --dport $PORT -j MASQUERADE
     done
 
-    # Status check
     if ip addr show dns0 &>/dev/null; then
         log_status "Client tun interface dns0 is up."
+        log_status "Ports forwarded: ${FORWARD_PORTS[*]}"
     else
         log_status "Failed to create dns0 interface."
     fi
-
-    log_status "Ports forwarded: ${FORWARD_PORTS[*]}"
 }
 
-# =============================
-# ===== Run ==================
-# =============================
-
+# ===== Run =====
 if [[ "$ROLE" == "server" ]]; then
     setup_server
 elif [[ "$ROLE" == "client" ]]; then
